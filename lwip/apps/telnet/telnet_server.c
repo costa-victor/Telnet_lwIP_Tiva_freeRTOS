@@ -97,44 +97,17 @@ void NewClient( void *pvParameters ) {
 	char buffer[256];
 	int i, nbytes;
 	int clientfd = *((int*) pvParameters);
+    char cInputIndex = 0;
+    BaseType_t xMoreDataToFollow;
+    static char pcOutputString[ MAX_OUTPUT_LENGTH ], pcInputString[ MAX_INPUT_LENGTH ];     // The input and output buffers are declared static to keep them off the stack.
 
     // Empty initial trash
     nbytes=lwip_read(clientfd, buffer, sizeof(buffer));
 
     // Welcome message
-    lwip_send(clientfd, "Welcome to the FreeRTOS Telnet Server\n\r", 39, 0);
-
-#if 0
-	do {
-		nbytes=lwip_recv(clientfd, buffer, sizeof(buffer),0);
-		if (nbytes>0) { //no error
-
-            for(i=0;i<nbytes;i++)
-            {
-                //lwip_send(clientfd, buffer[i], sizeof(buffer),0);
-                //UARTPutChar(UART0_BASE, buffer[i]);
-                // Aqui vai o c�digo do terminal
-                // (void)UARTGetChar(&buffer[i], portMAX_DELAY);
-            }
-
-
-
-		}
-	}  while (nbytes>0);
-
-
-
-#else
-
-
-    char cInputIndex = 0;
-    BaseType_t xMoreDataToFollow;
-    /* The input and output buffers are declared static to keep them off the stack. */
-    static char pcOutputString[ MAX_OUTPUT_LENGTH ], pcInputString[ MAX_INPUT_LENGTH ];
-
+    lwip_send(clientfd, "\r\n\tFreeRTOS Telnet Server:\r\n\r\n~$ ", sizeof("\r\n\tFreeRTOS Telnet Server:\r\n\r\n~$ "), 0);
 
     for( ;; ){
-
         //(void)UARTGetChar(&buffer, portMAX_DELAY);
         nbytes = lwip_recv(clientfd, buffer, sizeof(buffer), 0);
 
@@ -149,6 +122,17 @@ void NewClient( void *pvParameters ) {
                     lwip_send(clientfd, "\r\n", sizeof("\r\n"),0);
                     do
                     {
+                        /*
+                         * Para eliminar lixo de memória armazenada na variavel pcOutputString:
+                         *      pcOutputString[0] = '\0';
+                         *
+                         *  Como não resolveu para limpar a string, preenchi toda ela com NULL
+                         *
+                         */
+                        int c=0;
+                        for(c; c<MAX_OUTPUT_LENGTH;c++){
+                            pcOutputString[c] = 0;
+                        }
 
                         xMoreDataToFollow = FreeRTOS_CLIProcessCommand
                                       (
@@ -157,9 +141,13 @@ void NewClient( void *pvParameters ) {
                                           MAX_OUTPUT_LENGTH/* The size of the output buffer. */
                                       );
 
-
-                        //UARTPutString(UART0_BASE, pcOutputString);
                         lwip_send(clientfd, pcOutputString, sizeof(pcOutputString),0);
+
+
+                        if( xMoreDataToFollow == pdFALSE  )
+                        {
+                            lwip_send(clientfd, "~$ ", sizeof("~$ "),0);
+                        }
 
                     } while( xMoreDataToFollow != pdFALSE );
 
@@ -169,8 +157,6 @@ void NewClient( void *pvParameters ) {
                 }
                 else
                 {
-
-
                     if( buffer[i] == '\n' )
                     {
                         /* Ignore . */
@@ -185,18 +171,15 @@ void NewClient( void *pvParameters ) {
                         }
 
                         //UARTPutString(UART0_BASE, &buffer[i]);
-                        lwip_send(clientfd, &buffer[i], sizeof(char),0);
+                        lwip_send(clientfd, &buffer[i], sizeof(buffer[i]),0);
                     }
                     else
                     {
-
                         if( cInputIndex < MAX_INPUT_LENGTH )
                         {
                             pcInputString[ cInputIndex ] = buffer[i];
                             cInputIndex++;
                         }
-                        //UARTPutString(UART0_BASE, &buffer[i]);
-                        //lwip_send(clientfd, &buffer[i], sizeof(char),0);
                     }
                 }
 
@@ -204,16 +187,5 @@ void NewClient( void *pvParameters ) {
         }
     }
 
-#endif
-
-
-
-
-
-
-
-
 	lwip_close(clientfd);
-	// N�o precisa apagar a tarefa, pq o pr�prio port
-	// do LwIP para o FreeRTOS faz isso
 }
