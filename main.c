@@ -27,9 +27,6 @@
 #include "lwiplib.h"            // lwIP
 #include "pinout.h"             // Pinout para config ethernet
 #include "telnet_server.h"
-#include "httpd.h"              // Servidor http
-//#include "sntp.h"               // Para descobrir o tempo do sistema com sntp
-
 
 
 /*
@@ -658,7 +655,7 @@ void Terminal(void *param){
 void
 DisplayIPAddress(uint32_t ui32Addr)
 {
-    // Para poder ver o conteúdo
+    // Para poder ver o conteúdo em modo Debug
     //static volatile char pcBuf[16];
     char pcBuf[16];
 
@@ -670,8 +667,7 @@ DisplayIPAddress(uint32_t ui32Addr)
 
     //
     // Display the string.
-    //
-    // UARTPutString(UART0_BASE, pcBuf);
+    UARTPutString(UART0_BASE, pcBuf);
 }
 
 
@@ -714,9 +710,8 @@ lwIPHostTimerHandler(void)
             // Display the new IP address.
             //
             lwip_link_up = pdTRUE;
-            //UARTPutString(UART0_BASE, "IP Address: ");
+            UARTPutString(UART0_BASE, "\r\nIP Address: ");
             DisplayIPAddress(ui32NewIPAddress);
-            //UARTPutString(UART0_BASE, "\n\rOpen a browser and enter the IP address.\n\r");
         }
 
         //
@@ -873,7 +868,7 @@ int main(void)
     // Instalando uma tarefa - Pressione Ctrl+Space enquanto digita uma função pra ativar o Intellisense
     //xTaskCreate(task1, "Tarefa 1", 256, NULL, 10, &task1_handle);
     //xTaskCreate(task2, "Tarefa 2", 256, NULL, 10, &task2_handle);
-    //xTaskCreate(Terminal, "Terminal Serial", 256, NULL, 3, &terminal_handle);
+    xTaskCreate(Terminal, "Terminal Serial", 256, NULL, 3, &terminal_handle);
     //xTaskCreate(print_task, "Print task", 256, NULL, 7, &print_task_handle);
 
 

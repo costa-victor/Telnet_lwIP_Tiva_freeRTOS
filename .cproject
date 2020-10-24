@@ -58,8 +58,6 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/lwip/src/include}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/lwip}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers}"/>
-									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/FreeRTOS-Plus-IO/Device/TM4C1294/SupportedBoards}"/>
-									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/FreeRTOS-Plus-IO/Include}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/FreeRTOS-Plus-CLI}"/>
 									<listOptionValue builtIn="false" value="/home/victor/ti/tivaware"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/config}"/>
