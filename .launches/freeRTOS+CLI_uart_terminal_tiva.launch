@@ -4,7 +4,7 @@
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_PROGRAM.Tiva TM4C1294NCPDT.ccxml.Stellaris In-Circuit Debug Interface/CORTEX_M4_0" value="${build_artifact:freeRTOS+CLI_uart_terminal_tiva}"/>
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_PROJECT.Tiva TM4C1294NCPDT.ccxml.Stellaris In-Circuit Debug Interface/CORTEX_M4_0" value="freeRTOS+CLI_uart_terminal_tiva"/>
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_TARGET_CONFIG" value="${target_config_active_default:freeRTOS+CLI_uart_terminal_tiva}"/>
-<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.Tiva TM4C1294NCPDT.ccxml.Stellaris In-Circuit Debug Interface/CORTEX_M4_0" value="/home/victor/code_composer_workspace_v10/freeRTOS+CLI_uart_terminal_tiva/Debug/freeRTOS+CLI_uart_terminal_tiva.out"/>
+<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.Tiva TM4C1294NCPDT.ccxml.Stellaris In-Circuit Debug Interface/CORTEX_M4_0" value="/media/victor/1f3aa121-0188-42a3-b7c4-b271c3c0afca/bkp-31-10-2020/code_composer_workspace_v10/freeRTOS+CLI_uart_terminal_tiva/Debug/freeRTOS+CLI_uart_terminal_tiva.out"/>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
 <listEntry value="/freeRTOS+CLI_uart_terminal_tiva"/>
 </listAttribute>

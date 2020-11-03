@@ -9,7 +9,6 @@
 #include "driverlib/sysctl.h"
 #include "FreeRTOS.h"
 #include "task.h"
-
                                 // Adições necessárias para desenvolver o driver de UART
 #include "queue.h"
 #include "semphr.h"
@@ -50,8 +49,8 @@
 #define UART_QUEUE          2
 #define UART_STRING         UART_QUEUE
 
-#define MAX_OUTPUT_LENGTH   128
-#define MAX_INPUT_LENGTH    512
+// #define MAX_OUTPUT_LENGTH   128
+// #define MAX_INPUT_LENGTH    512
 
 
 // ===========  Global Variables  ===========
@@ -64,6 +63,7 @@ QueueHandle_t qUART0;                   // Declares a queue structure for the UA
 SemaphoreHandle_t sUART0;               // Declares a semahpore strcuture for the UART
 SemaphoreHandle_t mutexTx0;             // Declares a mutex structure for the UART
 uint32_t g_ui32SysClock;                // System clock rate in Hz.
+BaseType_t exitFlag = 0;
 
 struct netif sNetIF;
 
@@ -86,8 +86,10 @@ portBASE_TYPE UARTGetChar(char *data, TickType_t timeout);
 void UARTPutChar(uint32_t ui32Base, char ucData);
 void UARTPutString(uint32_t ui32Base, char *string);
 static BaseType_t prvEchoCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString);
-static BaseType_t command_LED_ON_OFF(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString);
+static BaseType_t prvLED_OnOff_Command(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString);
 static BaseType_t prvClearCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString);
+static BaseType_t prvExitCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString);
+static BaseType_t prvTextColorCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString);
 void Terminal(void *param);
 void print_task(void *arg);
 void task1(void* param);
@@ -349,6 +351,7 @@ void UARTPutString(uint32_t ui32Base, char *string){
         }
     }
 }
+
 #endif
 
 // =============== FreeRTOS+CLI ======================
@@ -362,7 +365,7 @@ void UARTPutString(uint32_t ui32Base, char *string){
 
 // 1º Passo - Criar uma função que implemente o compartamento do comando
 /* */
-static BaseType_t command_LED_ON_OFF(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString){
+static BaseType_t prvLED_OnOff_Command(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString){
     char *pcParameter1;
     BaseType_t xParameterStringLength;
 
@@ -389,6 +392,7 @@ static BaseType_t command_LED_ON_OFF(char *pcWriteBuffer, size_t xWriteBufferLen
     else{
         strcpy(pcWriteBuffer, "Invalid parameter - Type ON or OFF\r\n");
     }
+
     return pdFALSE;     // Processo terminou e não há mais nada pra fazer
 
 }
@@ -411,12 +415,59 @@ static BaseType_t prvEchoCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 }
 
 static BaseType_t prvClearCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString){
-    // Limpa a tela
+    // Clears the screen and moves cursor to home position
     strcpy(pcWriteBuffer, "\033[2J\033[H");
 
     return pdFALSE;
 }
 
+static BaseType_t prvExitCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString){
+    // Trying to write '^]' to close the connection - Not working yet
+    // https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+    //strcpy(pcWriteBuffer, "\x1b[\x1d");
+
+    strcpy(pcWriteBuffer, "^]");
+    return pdFALSE;
+}
+
+static BaseType_t prvTextColorCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString){
+    // References:
+    // https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+    char *pcParameter1;
+    BaseType_t xParameterStringLength;
+
+    pcParameter1 = FreeRTOS_CLIGetParameter
+            (
+                    pcCommandString,
+                    1,
+                    &xParameterStringLength
+            );
+
+
+    if(!strcmp(pcParameter1, "red")){
+        strcpy(pcWriteBuffer, "\x1b[38;5;196m\n\r\tColor switched to red\n\r");
+    }
+    else if(!strcmp(pcParameter1, "green")){
+        strcpy(pcWriteBuffer, "\x1b[38;5;46m\n\r\tColor switched to green\n\r");
+    }
+    else if(!strcmp(pcParameter1, "blue")){
+        strcpy(pcWriteBuffer, "\x1b[38;5;39m\n\r\tColor switched to blue\n\r");
+    }
+    else if(!strcmp(pcParameter1, "yellow")){
+        strcpy(pcWriteBuffer, "\x1b[38;5;220m\n\r\tColor switched to yellow\n\r");
+    }
+    else if(!strcmp(pcParameter1, "black")){
+        strcpy(pcWriteBuffer, "\x1b[38;5;232m\n\r\tColor switched to black\n\r");
+    }
+    else if(!strcmp(pcParameter1, "white")){
+        strcpy(pcWriteBuffer, "\x1b[38;5;231m\n\r\tColor switched to white\n\r");
+    }
+    else{
+        strcpy(pcWriteBuffer, "Invalid color - Type 'help'\r\n");
+    }
+
+    return pdFALSE;
+}
 
 // 2º Passo - Mapear o comando para a função que irá implementar seu comportamento
 /* */
@@ -424,7 +475,7 @@ static const CLI_Command_Definition_t xLEDCommand =
 {
      "led", // Command name
      "\r\nled: Turn the led ON or OFF (Parameter: ON or OFF)\r\n\r\n", // Hint --help
-     command_LED_ON_OFF,    // Called function
+     prvLED_OnOff_Command,    // Called function
      1                      // This command has 1 parameter
 };
 
@@ -445,6 +496,22 @@ static const CLI_Command_Definition_t xClearCommand =
      0
 };
 
+static const CLI_Command_Definition_t xExitCommand =
+{
+     "exit", // Command name
+     "\r\nexit:\r\n Type <exit> to close connection\r\n\r\n", // Hint --help
+     prvExitCommand,    // Called function
+     0
+};
+
+static const CLI_Command_Definition_t xTextColorCommand =
+{
+     "color", // Command name
+     "\r\ncolor:\r\nChoose your text color [red, green, blue, yellow, black, white]\r\n\tExample: color red\r\n\r\n", // Hint --help
+     prvTextColorCommand,    // Called function
+     1
+};
+
 
 
 // 4º - Executar o interpretador de comandos, mais info aqui:
@@ -452,6 +519,9 @@ static const CLI_Command_Definition_t xClearCommand =
 void Terminal(void *param){
     char data;
     (void)param;
+    int cInputIndex = 0;
+    BaseType_t xMoreDataToFollow;
+    static char pcOutputString[ MAX_OUTPUT_LENGTH ], pcInputString[ MAX_INPUT_LENGTH ];     // The input and output buffers are declared static to keep them off the stack
 
     // Criação de um semaphore binário
     // Vai alocar dinamicamente na memória do sistema que é o HEAP, a estrutura de dados semaphoro e vai devolver
@@ -514,70 +584,35 @@ void Terminal(void *param){
             }
         }
     }
-    /*
-    // Limpa a tela
-    UARTPutString(UART0_BASE, "\033[2J\033[H");
-
-    // Avisa que o sistema iniciou
-    UARTPutString(UART0_BASE, "FreeRTOS started!\n\r");
-
-    // Laço infinito que aguarda eu digitar algum caractere
-    while(1){
-        (void)UARTGetChar(&data, portMAX_DELAY);    // portMAX_delay = Deixa a função em espera indefinidamente, neste caso é até ser digitado algo
-        if(data != 13){                             // Se for diferente de ENTER
-            UARTPutChar(UART0_BASE, data);          // devolve o caractere para o terminal
-        }
-        else{                                       // Quebra de linha
-            UARTPutChar(UART0_BASE, '\n');
-            UARTPutChar(UART0_BASE, '\r');
-        }
-    }
-*/
-
-#if 1
 
     // Limpa a tela
     UARTPutString(UART0_BASE, "\033[2J\033[H");
-
-    char cInputIndex = 0;
-    BaseType_t xMoreDataToFollow;
-    /* The input and output buffers are declared static to keep them off the stack. */
-    static char pcOutputString[ MAX_OUTPUT_LENGTH ], pcInputString[ MAX_INPUT_LENGTH ];
 
     /* This code assumes the peripheral being used as the console has already
     been opened and configured, and is passed into the task as the task
     parameter.  Cast the task parameter to the correct type. */
 
     /* Send a welcome message to the user knows they are connected. */
-    //FreeRTOS_write( xConsole, pcWelcomeMessage, strlen( pcWelcomeMessage ) );
-    //UARTPutString(UART0_BASE ,pcWelcomeMessage);
     UARTPutString(UART0_BASE , "\r\n\t\tFreeRTOS Terminal:\r\n\r\n~$ ");
 
     for( ;; )
     {
         /* This implementation reads a single character at a time.  Wait in the
         Blocked state until a character is received. */
-        //FreeRTOS_read( xConsole, &cRxedChar, sizeof( cRxedChar ) );
+
         // Desiste do processador até que tenha uma interrupção, por isso o portMAX_DELAY
         (void)UARTGetChar(&data, portMAX_DELAY);
-        /*
-        portBASE_TYPE UARTGetChar(char *data, TickType_t timeout){
-            // Este retorno me diz se eu sai por timeout ou porque chegou dados
-            return xQueueReceive(qUART0, data, timeout);
-        }
-        */
         if( data == '\r' )     // Enter pressed
         {
             /* A newline character was received, so the input command string is
             complete and can be processed.  Transmit a line separator, just to
             make the output easier to read. */
-            //FreeRTOS_write( xConsole, "\r\n", strlen( "\r\n" );
 
             /* The command interpreter is called repeatedly until it returns
             pdFALSE.  See the "Implementing a command" documentation for an
             exaplanation of why this is. */
 
-            // Break line
+            // Welcome home
             UARTPutString(UART0_BASE, "\r\n");
             do
             {
@@ -593,8 +628,12 @@ void Terminal(void *param){
 
                 /* Write the output generated by the command interpreter to the
                 console. */
-                //FreeRTOS_write( xConsole, pcOutputString, strlen( pcOutputString ) );
                 UARTPutString(UART0_BASE, pcOutputString);
+
+                if( xMoreDataToFollow == pdFALSE  )
+                {
+                    UARTPutString(UART0_BASE, "~$ ");
+                }
 
             } while( xMoreDataToFollow != pdFALSE );
 
@@ -624,7 +663,7 @@ void Terminal(void *param){
                     pcInputString[ cInputIndex ] = '\0';
                 }
 
-                UARTPutString(UART0_BASE, &data);
+                UARTPutChar(UART0_BASE, data);
             }
             else
             {
@@ -637,13 +676,11 @@ void Terminal(void *param){
                     pcInputString[ cInputIndex ] = data;
                     cInputIndex++;
                 }
-                //UARTPutString(&cRxedChar, 1);
-                UARTPutString(UART0_BASE, &data);
+
+                UARTPutChar(UART0_BASE, data);
             }
         }
     }
-
-#endif
 }
 
 
@@ -861,6 +898,8 @@ int main(void)
     FreeRTOS_CLIRegisterCommand(&xLEDCommand);
     FreeRTOS_CLIRegisterCommand(&xEchoCommand);
     FreeRTOS_CLIRegisterCommand(&xClearCommand);
+    FreeRTOS_CLIRegisterCommand(&xExitCommand);
+    FreeRTOS_CLIRegisterCommand(&xTextColorCommand);
 
     // Instalando tarefa lwIP
     xTaskCreate(UpLwIP, "LwIP Task", 1024, NULL, 10, &lwIP_handler);

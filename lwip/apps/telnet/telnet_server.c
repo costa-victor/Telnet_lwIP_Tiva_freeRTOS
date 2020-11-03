@@ -20,6 +20,7 @@
 /* ------------------------ Project includes ------------------------------ */
 #include <string.h>
 #include <stdio.h>
+#include "telnet_server.h"
 
 #ifndef SOCK_SERVER_PORT
 #define SOCK_SERVER_PORT  23
@@ -90,8 +91,6 @@ void SocketTelnetServer( void *pvParameters )
 	}
 }
 
-#define MAX_OUTPUT_LENGTH   128
-#define MAX_INPUT_LENGTH    512
 
 void NewClient( void *pvParameters ) {
 	char buffer[256];
@@ -100,14 +99,13 @@ void NewClient( void *pvParameters ) {
     char cInputIndex = 0;
     BaseType_t xMoreDataToFollow;
     static char pcOutputString[ MAX_OUTPUT_LENGTH ], pcInputString[ MAX_INPUT_LENGTH ];     // The input and output buffers are declared static to keep them off the stack.
-
     // Empty initial trash
     nbytes=lwip_read(clientfd, buffer, sizeof(buffer));
 
     // Welcome message
     lwip_send(clientfd, "\r\n\tFreeRTOS Telnet Server:\r\n\r\n~$ ", sizeof("\r\n\tFreeRTOS Telnet Server:\r\n\r\n~$ "), 0);
 
-    for( ;; ){
+    do{
         //(void)UARTGetChar(&buffer, portMAX_DELAY);
         nbytes = lwip_recv(clientfd, buffer, sizeof(buffer), 0);
 
@@ -134,6 +132,7 @@ void NewClient( void *pvParameters ) {
                             pcOutputString[c] = 0;
                         }
 
+
                         xMoreDataToFollow = FreeRTOS_CLIProcessCommand
                                       (
                                           pcInputString,   /* The command string.*/
@@ -141,8 +140,14 @@ void NewClient( void *pvParameters ) {
                                           MAX_OUTPUT_LENGTH/* The size of the output buffer. */
                                       );
 
-                        lwip_send(clientfd, pcOutputString, sizeof(pcOutputString),0);
 
+                        // If the command "exit" was entered, its output is "^]"
+                        if( !strcmp(pcOutputString, "^]") ){
+                            nbytes = 0;         // forced stop
+                        }
+
+                        // Command output
+                        lwip_send(clientfd, pcOutputString, sizeof(pcOutputString),0);
 
                         if( xMoreDataToFollow == pdFALSE  )
                         {
@@ -185,7 +190,9 @@ void NewClient( void *pvParameters ) {
 
             }
         }
-    }
+
+    }while( nbytes > 0 );
+
 
 	lwip_close(clientfd);
 }
