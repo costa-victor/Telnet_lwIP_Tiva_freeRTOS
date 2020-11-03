@@ -3,8 +3,7 @@ Telnet Server project based on lwIP and freeRTOS+CLI for Tiva Connected TM4C1294
 
 ## Screenshots
 
-![img5](./images/project5.png)
-![img6](./images/project6.png)
+![gif7](./images/project7.gif)
 
 
 ## Requirements
@@ -40,4 +39,5 @@ Check the **IP Address** on the serial port to find out which IP to connect.
 
 And finally, connect to the telnet server.
 ![img5](./images/project5.png)
+![img6](./images/project6.png)
 
